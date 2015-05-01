@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <ctype.h>
+#include <sys/stat.h>
 
 #define SERV_PORT 9877
 #define MAXLINE 4096
@@ -14,6 +15,9 @@ int main(int argc, char* argv[])
 {
   int sockfd;
   struct sockaddr_in servaddr;
+
+  /* Create Download directory */
+  mkdir("Download", 0777);
 
   if (argc != 2) {
     printf("Usage: %s <IPaddress>\n", argv[0]);
