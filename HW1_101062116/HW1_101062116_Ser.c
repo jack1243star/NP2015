@@ -97,6 +97,7 @@ void str_echo(int sockfd)
       }
       closedir(dir);
       write(sockfd, ls_result, ls_result_size);
+      free(ls_result);
       read(sockfd, buf, MAXLINE);
       break;
     case '3': /* Upload file from client to server */
