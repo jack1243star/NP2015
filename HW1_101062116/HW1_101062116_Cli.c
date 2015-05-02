@@ -62,6 +62,9 @@ void str_cli(FILE *fp, int sockfd)
       /* Send ACK */
       write(sockfd, "\x06", 1);
       break;
+    case '5': /* Quit client */
+      return;
+      break;
     default:
       sendline[strlen(sendline)]='\0';
       write(sockfd, sendline, strlen(sendline)+1);
