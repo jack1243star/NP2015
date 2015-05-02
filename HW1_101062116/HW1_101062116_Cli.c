@@ -40,6 +40,7 @@ int main(int argc, char* argv[])
 void str_cli(FILE *fp, int sockfd)
 {
   char sendline[MAXLINE], recvline[MAXLINE], data[PACKET_SIZE];
+  char dl_name[MAXLINE];
   FILE *file;
   long file_size, left_size, n;
 
@@ -111,6 +112,54 @@ void str_cli(FILE *fp, int sockfd)
       printf("File upload complete.\n");
       /* Send ACK */
       write(sockfd, "\x06", 1);
+      fclose(file);
+      break;
+    case '4': /* Download file from server to client */
+      printf("Input file name to download: ");
+      /* Get file name */
+      sendline[0]='4';
+      fgets(sendline+1, MAXLINE-1, fp);
+      sendline[strlen(sendline)-1]='\0';
+
+      /* Create file */
+      strcpy(dl_name, "Download/");
+      strcat(dl_name, sendline+1);
+      file = fopen(dl_name, "wb");
+
+      /* Send operation and file name */
+      write(sockfd, sendline, strlen(sendline)+1);
+      /* Recv file size */
+      read(sockfd, &file_size, sizeof(long));
+      if(file_size == 0){
+        printf("File not found: %s\n",sendline+1);
+        write(sockfd, "\x06", 1);
+        break;
+      }
+      /* Send ACK */
+      write(sockfd, "\x06", 1);
+
+      left_size = file_size;
+      while(left_size > 0)
+      {
+        if(left_size > PACKET_SIZE)
+        {
+          /* Recv whole packet */
+          read(sockfd, data, PACKET_SIZE);
+          n = fwrite(data, 1, PACKET_SIZE, file);
+          /* Send ACK */
+          write(sockfd, "\x06", 1);
+        }
+        else
+        {
+          /* Recv last packet */
+          read(sockfd, data, left_size);
+          n = fwrite(data, 1, left_size, file);
+          /* Send ACK */
+          write(sockfd, "\x06", 1);
+        }
+        left_size -= n;
+      }
+      printf("File download complete.\n");
       fclose(file);
       break;
     case '5': /* Quit client */

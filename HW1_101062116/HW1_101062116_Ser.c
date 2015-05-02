@@ -139,6 +139,47 @@ void str_echo(int sockfd)
       fclose(file);
       break;
     case '4': /* Download file from server to client */
+      /* Get file size */
+      file = fopen(buf+1, "rb");
+      if(!file){
+        printf("File not found: %s\n", buf+1);
+        file_size = 0;
+        write(sockfd, &file_size, sizeof(long));
+        read(sockfd, buf, 1);
+        break;
+      }
+      fseek(file, 0, SEEK_END);
+      file_size = ftell(file);
+      rewind(file);
+      /* Send file size */
+      write(sockfd, &file_size, sizeof(long));
+      /* Recv ACK */
+      read(sockfd, buf, 1);
+
+      printf("Download file: %s(size = %ld)\n", buf+1, file_size);
+      left_size = file_size;
+      while(left_size > 0)
+      {
+        if(left_size > PACKET_SIZE)
+        {
+          /* Send whole packet */
+          n = fread(data, 1, PACKET_SIZE, file);
+          write(sockfd, data, PACKET_SIZE);
+          /* Recv ACK */
+          read(sockfd, buf, 1);
+        }
+        else
+        {
+          /* Send last packet */
+          n = fread(data, 1, left_size, file);
+          write(sockfd, data, left_size);
+          /* Recv ACK */
+          read(sockfd, buf, 1);
+        }
+        left_size -= n;
+      }
+      printf("File download complete.\n");
+      fclose(file);
       break;
     default:
       break;
