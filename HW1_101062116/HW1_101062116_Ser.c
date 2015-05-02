@@ -13,6 +13,7 @@
 #define SERV_PORT 9877
 #define MAXLINE 128
 #define LISTENQ 100 /* Backlog size */
+#define PACKET_SIZE 2048
 
 void str_echo(int sockfd);
 void sig_chld(int signo);
@@ -56,13 +57,14 @@ int main()
 
 void str_echo(int sockfd)
 {
-  ssize_t n;
-  char buf[MAXLINE];
+  char buf[MAXLINE], data[PACKET_SIZE];
   DIR *dir;
   struct dirent *ent;
   char* ls_result = NULL;
   char* ls_result_new = NULL;
   int ls_result_size = 1;
+  long file_size, left_size, n;
+  FILE *file;
 
  again:
   while((n=read(sockfd, buf, MAXLINE))>0)
@@ -86,14 +88,14 @@ void str_echo(int sockfd)
       dir = opendir(".");
       while((ent = readdir(dir)) != NULL)
       {
-	ls_result_size += (strlen(ent->d_name)+1);
-	ls_result_new = (char*)calloc(ls_result_size, sizeof(char));
-	strcpy(ls_result_new, ls_result);
-	strcat(ls_result_new, ent->d_name);
-	free(ls_result);
-	ls_result = ls_result_new;
-	ls_result[ls_result_size-2] = '\n';
-	ls_result[ls_result_size-1] = '\0';
+        ls_result_size += (strlen(ent->d_name)+1);
+        ls_result_new = (char*)calloc(ls_result_size, sizeof(char));
+        strcpy(ls_result_new, ls_result);
+        strcat(ls_result_new, ent->d_name);
+        free(ls_result);
+        ls_result = ls_result_new;
+        ls_result[ls_result_size-2] = '\n';
+        ls_result[ls_result_size-1] = '\0';
       }
       closedir(dir);
       write(sockfd, ls_result, ls_result_size);
@@ -101,6 +103,40 @@ void str_echo(int sockfd)
       read(sockfd, buf, MAXLINE);
       break;
     case '3': /* Upload file from client to server */
+      /* Send ACK */
+      write(sockfd, "\x06", 1);
+      /* Recv file size */
+      read(sockfd, &file_size, sizeof(long));
+      /* Send ACK */
+      write(sockfd, "\x06", 1);
+
+      printf("Upload file: %s(size = %ld)\n", buf+1, file_size);
+      file = fopen(buf+1, "wb");
+      left_size = file_size;
+      while(left_size > 0)
+      {
+        if(left_size > PACKET_SIZE)
+        {
+          /* Recv whole packet */
+          read(sockfd, data, PACKET_SIZE);
+          n = fwrite(data, 1, PACKET_SIZE, file);
+          /* Send ACK */
+          write(sockfd, "\x06", 1);
+        }
+        else
+        {
+          /* Recv last packet */
+          read(sockfd, data, left_size);
+          n = fwrite(data, 1, left_size, file);
+          /* Send ACK */
+          write(sockfd, "\x06", 1);
+        }
+        left_size -= n;
+      }
+      printf("File upload complete.\n");
+      /* Recv ACK */
+      read(sockfd, buf, 1);
+      fclose(file);
       break;
     case '4': /* Download file from server to client */
       break;

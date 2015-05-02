@@ -8,6 +8,7 @@
 
 #define SERV_PORT 9877
 #define MAXLINE 4096
+#define PACKET_SIZE 2048
 
 void str_cli(FILE *fp, int sockfd);
 
@@ -38,7 +39,9 @@ int main(int argc, char* argv[])
 
 void str_cli(FILE *fp, int sockfd)
 {
-  char sendline[MAXLINE], recvline[MAXLINE];
+  char sendline[MAXLINE], recvline[MAXLINE], data[PACKET_SIZE];
+  FILE *file;
+  long file_size, left_size, n;
 
   /* Print prompt */
   fputs("Please select operation[1-5]: ", stdout);
@@ -55,12 +58,60 @@ void str_cli(FILE *fp, int sockfd)
 
       if (read(sockfd, recvline, MAXLINE)==0)
       {
-	printf("ERROR\n");
-	return;
+        printf("ERROR\n");
+        return;
       }
       printf("Current directory: %s\n", recvline);
       /* Send ACK */
       write(sockfd, "\x06", 1);
+      break;
+    case '3': /* Upload file from client to server */
+      printf("Input file name to upload: ");
+      /* Get file name */
+      sendline[0]='3';
+      fgets(sendline+1, MAXLINE-1, fp);
+      sendline[strlen(sendline)-1]='\0';
+      /* Get file size */
+      file = fopen(sendline+1, "rb");
+      if(!file){printf("File not found: %s\n",sendline+1);break;}
+      fseek(file, 0, SEEK_END);
+      file_size = ftell(file);
+      rewind(file);
+
+      /* Send operation and file name */
+      write(sockfd, sendline, strlen(sendline)+1);
+      /* Recv ACK */
+      read(sockfd, recvline, 1);
+      /* Send file size */
+      write(sockfd, &file_size, sizeof(long));
+      /* Recv ACK */
+      read(sockfd, recvline, 1);
+
+      left_size = file_size;
+      while(left_size > 0)
+      {
+        if(left_size > PACKET_SIZE)
+        {
+          /* Send whole packet */
+          n = fread(data, 1, PACKET_SIZE, file);
+          write(sockfd, data, PACKET_SIZE);
+          /* Recv ACK */
+          read(sockfd, recvline, 1);
+        }
+        else
+        {
+          /* Send last packet */
+          n = fread(data, 1, left_size, file);
+          write(sockfd, data, left_size);
+          /* Recv ACK */
+          read(sockfd, recvline, 1);
+        }
+        left_size -= n;
+      }
+      printf("File upload complete.\n");
+      /* Send ACK */
+      write(sockfd, "\x06", 1);
+      fclose(file);
       break;
     case '5': /* Quit client */
       return;
@@ -71,8 +122,8 @@ void str_cli(FILE *fp, int sockfd)
 
       if (read(sockfd, recvline, MAXLINE)==0)
       {
-	printf("ERROR\n");
-	return;
+        printf("ERROR\n");
+        return;
       }
       fputs(recvline, stdout);
       /* Send ACK */
