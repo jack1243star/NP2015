@@ -39,17 +39,44 @@ int main(int argc, char* argv[])
 void str_cli(FILE *fp, int sockfd)
 {
   char sendline[MAXLINE], recvline[MAXLINE];
-  while (fgets(sendline, MAXLINE, fp)!=NULL) {
-    sendline[strlen(sendline)]='\0';
-    write(sockfd, sendline, strlen(sendline)+1);
 
-    if (read(sockfd, recvline, MAXLINE)==0)
+  /* Print prompt */
+  fputs("Please select operation[1-5]: ", stdout);
+  /* Process operation */
+  while (fgets(sendline, MAXLINE, fp)!=NULL) {
+    switch(sendline[0])
     {
-      printf("ERROR\n");
-      return;
+    case '1':
+      printf("Input directory to switch to: ");
+      fgets(sendline+1, MAXLINE-1, fp);
+      sendline[0]='1';
+      sendline[strlen(sendline)]='\0';
+      write(sockfd, sendline, strlen(sendline)+1);
+
+      if (read(sockfd, recvline, MAXLINE)==0)
+      {
+	printf("ERROR\n");
+	return;
+      }
+      printf("Current directory: %s\n", recvline);
+      /* Send ACK */
+      write(sockfd, "\x06", 1);
+      break;
+    default:
+      sendline[strlen(sendline)]='\0';
+      write(sockfd, sendline, strlen(sendline)+1);
+
+      if (read(sockfd, recvline, MAXLINE)==0)
+      {
+	printf("ERROR\n");
+	return;
+      }
+      fputs(recvline, stdout);
+      /* Send ACK */
+      write(sockfd, "\x06", 1);
+      break;
     }
-    fputs(recvline, stdout);
-    /* Send ACK */
-    write(sockfd, "\x06", 1);
+    /* Print prompt */
+    fputs("Please select operation[1-5]: ", stdout);
   }
 }
