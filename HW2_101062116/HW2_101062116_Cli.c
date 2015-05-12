@@ -5,6 +5,27 @@
 #include <sys/socket.h>
 
 #define MAXLINE 128
+#define IDOFFSET 1
+#define MAXIDLEN 20
+#define PWOFFSET 64
+#define MAXPWLEN 20
+
+#define OP_NEWUSER   1
+#define OP_LOGIN     2
+#define OP_SHOWUSER  3
+#define OP_SHOWLIST  4
+#define OP_ADDTEXT   5
+#define OP_SHOWTEXT  6
+#define OP_YELL      7
+#define OP_TELL      8
+#define OP_LOGOUT    9
+#define OP_RESPONSE 10
+#define OP_DOWNLOAD 11
+#define OP_UPLOAD   12
+#define OP_ADDBLIST 13
+#define OP_DELBLIST 14
+#define OP_DELTEXT  15
+#define OP_DELUSER  16
 
 void dg_cli(FILE *fp, int sockfd, struct sockaddr *pservaddr, socklen_t servlen);
 
@@ -36,12 +57,41 @@ void dg_cli(FILE *fp, int sockfd, struct sockaddr *pservaddr, socklen_t servlen)
   int n;
   char sendline[MAXLINE], recvline[MAXLINE+1];
 
-  while(fgets(sendline, MAXLINE, fp)!=NULL){
-    sendto(sockfd, sendline, strlen(sendline), 0, pservaddr, servlen);
+welcome:
+  fputs("[R]egister [L]ogin\n", stdout);
+  fgets(sendline, MAXLINE, fp);
+  switch(sendline[0]) {
+  case 'R': /* Register */
+  case 'r':
+    memset(sendline, 0, MAXLINE);
+    sendline[0] = OP_NEWUSER;
 
+    printf("ID(1-20 characters):");
+    fgets(sendline+IDOFFSET, MAXIDLEN, fp);
+
+    printf("PW(1-20 characters):");
+    fgets(sendline+PWOFFSET, MAXPWLEN, fp);
+
+    sendto(sockfd, sendline, MAXLINE, 0, pservaddr, servlen);
     n = recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
+    break;
+  case 'L': /* Login */
+  case 'l':
+    memset(sendline, 0, MAXLINE);
+    sendline[0] = OP_LOGIN;
 
-    recvline[n] = 0;
-    fputs(recvline, stdout);
+    printf("ID(1-20 characters):");
+    fgets(sendline+IDOFFSET, MAXIDLEN, fp);
+
+    printf("PW(1-20 characters):");
+    fgets(sendline+PWOFFSET, MAXPWLEN, fp);
+
+    sendto(sockfd, sendline, MAXLINE, 0, pservaddr, servlen);
+    n = recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
+    break;
+  default:
+    break;
   }
+
+  goto welcome;
 }
