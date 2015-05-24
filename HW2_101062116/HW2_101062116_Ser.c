@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <ctype.h>
 
 #define MAXLINE 128
 #define IDOFFSET 1
@@ -31,6 +32,7 @@
 #define OP_DELUSER  16
 
 void dg_echo(int sockfd, struct sockaddr *pcliaddr, socklen_t clilen);
+void prefix_alnum(char* str);
 
 int main(int argc, char* argv[])
 {
@@ -69,14 +71,18 @@ void dg_echo(int sockfd, struct sockaddr *pcliaddr, socklen_t clilen)
     n = recvfrom(sockfd, mesg, MAXLINE, 0, pcliaddr, &len);
     switch(mesg[0]) {
     case OP_NEWUSER: /* Register */
-      printf("IP=%s PORT=%d OP_NEWUSER ID=%s PW=%s",
+      prefix_alnum(mesg+IDOFFSET);
+      prefix_alnum(mesg+PWOFFSET);
+      printf("IP=%s PORT=%d OP_NEWUSER ID=%s PW=%s\n",
 	     inet_ntoa(((struct sockaddr_in*)pcliaddr)->sin_addr),
 	     htons(((struct sockaddr_in*)pcliaddr)->sin_port),
 	     mesg+IDOFFSET, mesg+PWOFFSET);
       sendto(sockfd, mesg, MAXLINE, 0, pcliaddr, clilen);
       break;
     case OP_LOGIN: /* Register */
-      printf("IP=%s PORT=%d OP_LOGIN ID=%s PW=%s",
+      prefix_alnum(mesg+IDOFFSET);
+      prefix_alnum(mesg+PWOFFSET);
+      printf("IP=%s PORT=%d OP_LOGIN ID=%s PW=%s\n",
 	     inet_ntoa(((struct sockaddr_in*)pcliaddr)->sin_addr),
 	     htons(((struct sockaddr_in*)pcliaddr)->sin_port),
 	     mesg+IDOFFSET, mesg+PWOFFSET);
@@ -90,4 +96,12 @@ void dg_echo(int sockfd, struct sockaddr *pcliaddr, socklen_t clilen)
       break;
     }
   }
+}
+
+void prefix_alnum(char* str)
+{
+  unsigned int i = 0;
+  while (isalnum(str[i]))
+    i++;
+  str[i] = '\0';
 }
