@@ -1,0 +1,13 @@
+CC	= cc
+CFLAGS	= -g -O0 -Wall -Wextra -pedantic -pthread
+
+all: HW3_101062116_Cli HW3_101062116_Ser
+
+HW3_101062116_Cli: HW3_101062116_Cli.c
+	$(CC) $(CFLAGS) HW3_101062116_Cli.c -o HW3_101062116_Cli
+
+HW3_101062116_Ser: HW3_101062116_Ser.c
+	$(CC) $(CFLAGS) HW3_101062116_Ser.c -o HW3_101062116_Ser
+
+clean:
+	-rm -rf HW3_101062116_Cli HW3_101062116_Ser
