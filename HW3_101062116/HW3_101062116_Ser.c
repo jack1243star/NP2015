@@ -43,6 +43,8 @@ struct user {
   char ip[64];
   short port;
   int online;
+  char listenip[64];
+  short listenport;
   struct file *filelist;
 };
 
@@ -181,6 +183,10 @@ void *serve(void *session)
 	    } else
 	      break;
 	  }
+	  /* Receive listen IP and port */
+	  recvall(connfd, buf, PACKETSIZE);
+	  strncpy(users[i].listenip, buf+IPOFFSET, 64);
+	  memcpy(&users[i].listenport, buf+PORTOFFSET, sizeof(short));
           break;
         }
       }
@@ -216,6 +222,22 @@ void *serve(void *session)
         }
       }
       buf[0] = 0;
+      sendall(connfd, buf, PACKETSIZE);
+      break;
+    case OP_DOWNLOAD:
+      /* Send ip and port of peer which has the file */
+      for (i=0; i<MAXUSER; i++) {
+        if (strncmp(users[i].id, buf+IDOFFSET, MAXIDLEN) == 0) {
+	  buf[0] = 1;
+	  strcpy(buf+IPOFFSET, users[i].listenip);
+	  memcpy(buf+PORTOFFSET, &users[i].listenport, sizeof(short));
+	  sendall(connfd, buf, PACKETSIZE);
+	  break;
+        }
+      }
+      /* ID incorrect */
+      buf[0] = 0;
+      strcpy(buf+1, "Incorrect ID\n");
       sendall(connfd, buf, PACKETSIZE);
       break;
     default:
