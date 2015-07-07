@@ -1,5 +1,5 @@
 CC	= cc
-CFLAGS	= -g -O0 -Wall -Wextra -pedantic
+CFLAGS	= -g -O0 -Wall -Wextra -pedantic -pthread
 
 all: HW2_101062116_Cli HW2_101062116_Ser
 
